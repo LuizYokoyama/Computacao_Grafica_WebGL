@@ -18,6 +18,6 @@ Para utilizar, basta abrir o arquivo Scene_Graph.html em um navegador Web.
                  <li>tecla p                       - aplica a projeção perspectiva</li>
 		</ul>
 
-Exemplo do gráfico:
+Exemplo do gráfico 3D criado:
 			
 ![image](https://user-images.githubusercontent.com/95327592/144723481-8f6b50bb-edf4-48b8-9bfc-6dd82bd5d7d2.png)
