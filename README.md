@@ -12,12 +12,12 @@ Para utilizar, basta abrir o arquivo Scene_Graph.html em um navegador Web.
                  <li>Insert ou Delete              - Rotaciona em torno do eixo N</li>
                  <li>Clique do mouse e movimento   - rotaciona no plano UV</li>
             
-				 <li>tecla h                       - alterna entre dicas de ajuda / tela cheia</li>
+		 <li>tecla h                       - alterna entre dicas de ajuda / tela cheia</li>
                  <li>tecla + ou =                  - amplia a imagem, sem movimentar a câmera</li>
                  <li>tecla - ou _                  - reduz a imagem, sem movimentar a câmera</li>
                  <li>tecla o                       - aplica a projeção ortográfica</li>
                  <li>tecla p                       - aplica a projeção perspectiva</li>
-		<ul>
+		</ul>
 
 Exemplo do gráfico:
 			
