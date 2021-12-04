@@ -1,4 +1,4 @@
-#Animação em WebGL
+##Animação em WebGL
  
 Trabalho desenvolvido com WebGL e JS para a disciplina de Computação Gráfica da minha graduação em Engenharia de Computação.
 
