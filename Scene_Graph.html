@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html>
+<header>
+	<meta charset="UTF-8" />
+	<title>Trabalho de Computação Gráfica</title>
+</header>
+
+<body>
+	<h1 style="text-align:center">Trabalho de Computação Gráfica</h1>
+	<h2 style="text-align:center">Aluno:</h2>
+	<h2 style="text-align:center">Luiz Yokoyama Felix de Souza</h2>
+	<p>Neste trabalho de computação gráfica, foi desenvolvido um <i>scene graph</i> de uma "auto pista" que está implementada no arquivo chamado cena.js.</p>
+	<canvas id="canvas-id" style="border:1px solid black;display:inline-block;" width="500" height="500">O browser não suporta a <i>tag</i> HTML canvas.</canvas>
+
+	<div id="help" style="display:inline-block; padding: 10px; vertical-align:top;">
+                <h2 style="text-align:center">Ajuda</h2>
+                <h3 style="text-align:center">Movimentos da Câmera:</h3>
+                <ul>
+                 <li>w e arrowUP, s e arrowDown    - move para frente ou para trás </li>
+                 <li>d e arrowRight, a e arrowLeft - move para direira ou para a esquerda</li>
+                 <li>PageUp ou PageDown            - move para cima ou para baixo</li>
+                 <li>Insert ou Delete              - Rotaciona em torno do eixo N</li>
+                 <li>Clique do mouse e movimento   - rotaciona no plano UV</li>
+                </ul>
+                
+                <h3 style="text-align:center">Funções que FORAM IMPLEMENTADAS:</h3>
+                <ul>
+				 <li>tecla h                       - alterna entre dicas de ajuda / tela cheia</li>
+                 <li>tecla + ou =                  - amplia a imagem, sem movimentar a câmera</li>
+                 <li>tecla - ou _                  - reduz a imagem, sem movimentar a câmera</li>
+                 <li>tecla o                       - aplica a projeção ortográfica</li>
+                 <li>tecla p                       - aplica a projeção perspectiva</li>
+                </ul>
+        </div>
+
+	<p id="message"></p>
+
+	
+
+<h2 id="atividades">Atividades</h2>
+
+<p>Partindo de um programa básico, as seguintes atividades foram realizadas:</p>
+
+<ol>
+<li><p><strong>Criar um <em>Scene Graph</em></strong></p>
+
+<p>Primitivas básicas usadas: esfera, cone, cubo, plano, disco, pirâmide, cilíndro.</p>
+
+<p>Ob<em>scene graph</em> é animado: carro gira as rodas e se movimenta&#8230;</p></li>
+<li><p>Também foi realizada a <strong>remoção de superfícies escondidas e aplicada a projeção de perspectiva / ortográfica</strong></p>
+
+<p>Realizada a função de <em>Zoom</em>, tanto na ampliação, quanto na redução</p></li>
+<li><p>Criaada os <em>shaders</em> de vertex e de fragmento que permitam <strong>renderizar a cena usando os algorítimos de iluminação</strong></p>
+
+<ul>
+<li>Criadas dois tipos de fontes luminosas, uma omnidirecional e uma do tipo <em>spot light</em></li>
+</ul></li>
+</ol>
+
+
+<!-- ------ Início - Definição dos Shaders ------ -->
+<script id="shader-vs" type="x-shader/x-vertex">
+///SHADER DE VERTEX
+
+attribute vec3 pos;
+attribute vec3 normal;
+
+varying vec3 color;
+
+
+uniform mat4 model;
+uniform mat4 view;
+uniform mat4 proj;
+
+varying vec3 Vnormal;
+varying vec4 Vponto;
+varying vec3 Vpos;
+
+varying mat4 Vmodel;
+varying mat4 Vview;
+
+
+
+void main()
+{
+	mat4 modelview= view * model;
+	vec4 ponto = modelview * vec4(pos, 1);
+	gl_Position = proj * ponto;
+	
+	Vponto= ponto;
+	Vpos= pos;
+	Vnormal= normal;
+	Vmodel= model;
+	Vview= view;
+	
+
+}
+</script>
+	
+<script id="shader-fs" type="x-shader/x-fragment">
+///SHADER DE FRAGMENTO
+precision highp float;
+varying vec3 color;
+
+varying vec3 Vnormal;
+varying vec4 Vponto;
+varying vec3 Vpos;
+
+varying mat4 Vmodel;
+varying mat4 Vview;
+
+
+struct Material {
+	vec3 kad;
+	vec3 ks;
+	vec3 emission;
+	float shineness;
+};
+
+struct Source {
+	vec3 ia;
+	vec3 id;
+	vec3 is;
+	vec3 pos;
+};
+
+uniform  Material mat;
+uniform  Source luz1; /// 1º FONTE DE LUZ
+uniform  Source luz2; /// 2º FONTE DE LUZ
+
+void main()
+{
+	vec3 c= color;
+
+	mat4 mv= Vview * Vmodel;
+	vec4 n = normalize(mv * vec4(Vnormal, 0));
+	
+	c = luz1.ia * mat.kad; //LUZ AMBIENTE
+	vec3 l1 = vec3(normalize(Vview * vec4(luz1.pos, 1) - Vponto));
+	vec3 l2 = vec3(normalize(Vview * vec4(luz2.pos, 1) - Vponto));
+	vec3 pGlobal= (Vmodel* vec4(Vpos, 1)).xyz;
+	vec3 ld1 = normalize(l1 - pGlobal);//vetor da luz global
+	vec3 ld2 = normalize(l2 - pGlobal);//vetor da luz global
+	vec3 r1 = reflect(-l1, n.xyz);
+	vec3 r2 = reflect(-l2, n.xyz);
+	vec3 v = normalize(-Vponto.xyz);
+	
+	float d1= length(luz1.pos - (Vmodel * vec4(Vpos, 1)).xyz); //distância da luz 1 até o ponto
+	float fAtt1= 1./(1. +1.1*d1 +0.05*d1*d1); //fator de atenuação da fonte luminosa 1
+	
+	float d2= length(luz2.pos - (Vmodel * vec4(Vpos, 1)).xyz); //distância da luz 2 até o ponto
+	float fAtt2= 1./(1. +0.5*d2 +0.04*d2*d2); //fator de atenuação da fonte luminosa 2
+	
+	//>> LUZ omnidirecional 	
+	if ( dot(l1, n.xyz) > 0.0 ){
+		c += fAtt1 * luz1.id * mat.kad * max(dot(l1, n.xyz), 0.0);
+		c += fAtt1 * luz1.is * mat.ks * max(pow(dot(r1, v), mat.shineness), 0.0);
+		
+	}
+	//>> SPOT LIGHT <<
+	//neste caso luz2.ia é usado como vetor direção do spot light
+	if ((dot(ld2, luz2.ia) >= 0.8) && ( dot(l2, n.xyz) > 0.0 )) {
+			
+			c += fAtt2 * luz2.id * mat.kad * max(dot(l2, n.xyz), 0.0);
+			c += fAtt2 * luz2.is * mat.ks * max(pow(dot(r2, v), mat.shineness), 0.0);
+			}
+	c += mat.emission;
+	clamp(c, vec3(0, 0, 0), vec3(1., 1., 1.));
+	
+	gl_FragColor = vec4(c, 1.);
+	
+}
+</script>
+<!-- ------ Fim - Definição dos Shaders ------ -->
+
+
+<script src="lib/shader.js"></script>
+<script src="lib/buffer.js"></script>
+<script src="lib/gl-matrix-min.js"></script>
+<script src="lib/primitives.js"></script>
+<script src="lib/stack.js"></script>
+<script src="lib/humaninput-latest.min.js"></script>
+
+<script src="cena.js"></script>
+
+
+<script>
+"use strict"
+
+var esc = 1;
+function init_webgl(canvas)
+{
+	var gl = canvas.getContext("webgl");
+	if ( !gl )
+		throw Error("WebGL não é suportado pelo seu browser");
+		
+	gl.clearColor(0, 0, 0, 1);
+	gl.clearDepth(1.0);
+	gl.enable(gl.DEPTH_TEST);//HABILITA REMOÇÃO DE SUPERFICIES ESCONDIDAS POR OUTROS OBJETOS
+	gl.depthFunc(gl.LEQUAL); //PARÂMETRO PARA REMOÇÃO ESCONDIDAS ATRAS OU A MESMA DISTÂNCIA DO OBJETO DA FRENTE
+	gl.enable(gl.CULL_FACE);//REMOÇÃO DAS SUPERFICES (padrão: TRASEIRAS)
+	
+	return gl;
+}
+
+// A cada quadro renderizado, essa função é chamada para atualizar a posição
+// da câmera, conforme o conteúdo das mensagens. A atualização final é feita
+// via chamada à função lookAt, conforme codificado abaixo (final do arquivo)
+function update_camera(camera, cam_message, vel, deltatime)
+{
+	let i;
+	for(i in cam_message) {
+		let c = camera;
+		let tmp = vec3.create();
+		
+		let angle = 0;
+		let q = [];
+		if ( cam_message[i] )
+			switch(i) {
+			case "move_forward":
+				vec3.scale(tmp, c.dir, vel.cam_linear * deltatime * cam_message[i]);
+				vec3.add(c.eye, c.eye, tmp);
+				break;
+				
+			case "move_up":
+				vec3.scale(tmp, c.up, vel.cam_linear * deltatime * cam_message[i]);
+				vec3.add(c.eye, c.eye, tmp);
+				break;
+				
+			case "move_right":
+				vec3.cross(tmp, c.dir, c.up);
+				vec3.scale(tmp, tmp, vel.cam_linear * deltatime * cam_message[i]);
+				vec3.add(c.eye, c.eye, tmp);
+				break;
+				
+			case "rotate_forward":
+				angle = glMatrix.toRadian(vel.cam_angular * deltatime * cam_message[i])/2;
+				vec3.scale(tmp, c.dir, Math.sin(angle));
+				q = [tmp[0], tmp[1], tmp[2], Math.cos(angle)];
+				vec3.transformQuat(c.up, c.up, q);
+				vec3.normalize(c.up, c.up);
+				break;
+				
+			case "rotate_up":
+				angle = glMatrix.toRadian(vel.cam_angular * deltatime * cam_message[i])/2;
+				vec3.scale(tmp, c.up, Math.sin(angle));
+				q = [tmp[0], tmp[1], tmp[2], Math.cos(angle)];
+				vec3.transformQuat(c.dir, c.dir, q);
+				vec3.normalize(c.dir, c.dir);
+				cam_message[i] = 0;
+				break;
+			
+			case "rotate_right":
+				angle = glMatrix.toRadian(vel.cam_angular * deltatime * cam_message[i])/2;
+				vec3.cross(tmp, c.dir, c.up);
+				vec3.scale(tmp, tmp, Math.sin(angle));
+				q = [tmp[0], tmp[1], tmp[2], Math.cos(angle)];
+				vec3.transformQuat(c.dir, c.dir, q);
+				vec3.transformQuat(c.up, c.up, q);
+				vec3.normalize(c.dir, c.dir);
+				vec3.normalize(c.up, c.up);
+				cam_message[i] = 0;
+				break;
+				
+				
+	//	FUNCIONALIDADES IMPLEMENTADAS:	
+			case "ortografica":
+				mat4.ortho(projection, -3, 3, -3, 3, -3, 100);
+				gl.uniformMatrix4fv(prog.proj, false, projection);
+				
+				cam_message[i] = 0;
+				break;
+					
+			case "perspectiva":
+				mat4.perspective(projection, glMatrix.toRadian(60), 1, .1, 100);
+				gl.uniformMatrix4fv(prog.proj, false, projection);
+				
+				cam_message[i] = 0;
+				break;
+				
+			case "mais_zoom":
+			
+				esc+= esc*cam_message[i]*0.01;
+				
+				//cam_message[i] = 0;
+				break;
+				
+			case "menos_zoom":
+			
+				esc+= esc*cam_message[i]*0.01;
+				
+				//cam_message[i] = 0;
+				break;
+			}
+	vec3.normalize(c.dir, c.dir);
+	vec3.normalize(c.up, c.up);
+	}
+	
+	return esc;
+}
+
+// Registra as funções de callback para os eventos selecionados. Em outras
+// palavras, toda vez que um evento é capturado, a função registrada é 
+// executada
+function init_events(HI, camera_message)
+{
+	
+	HI.on(["keydown:w", "keyup:w", "keydown:Up", "keyup:Up"], function(event) {
+		camera_message.move_forward = event.type == "keydown" ? 1 : 0; 
+		return false;
+	});
+	HI.on(["keydown:s", "keyup:s", "keydown:Down", "keyup:Down"], function(event) {
+		camera_message.move_forward = event.type == "keydown" ? -1 : 0; 
+		return false;
+	});
+	
+	HI.on(["keydown:d", "keyup:d", "keydown:Right", "keyup:Right"], function(event) {
+		camera_message.move_right = event.type == "keydown" ? 1 : 0;
+		return false;
+	});	
+	HI.on(["keydown:a", "keyup:a", "keydown:Left", "keyup:Left"], function(event) {
+		camera_message.move_right = event.type == "keydown" ? -1 : 0;
+		return false;
+	});
+	
+	//PROJEÇÃO ORTOGRÁFICA
+	HI.on(["keydown:o", "keyup:o"], function(event) {
+		camera_message.ortografica = event.type == "keydown" ? -1 : 0;
+		return false;
+	});
+	//PROJEÇÃO PERPECTIVA
+	HI.on(["keydown:p", "keyup:p"], function(event) {
+		camera_message.perspectiva = event.type == "keydown" ? -1 : 0;
+		return false;
+	});
+	//MAIS ZOOM: TECLA '+'
+	HI.on(["keydown:+", "keydown:=", "keyup:+", "keyup:="], function(event) {
+		camera_message.mais_zoom = event.type == "keydown" ? 1 : 0;
+		return false;
+	});
+	//MENOS ZOOM: TECLA '-'
+	HI.on(["keydown:-", "keydown:_", "keyup:-", "keyup:_"], function(event) {
+		camera_message.menos_zoom = event.type == "keydown" ? -1 : 0;
+		return false;
+	});
+	
+	
+	HI.on(["keydown:PageUp", "keyup:PageUp"], function(event) {
+		camera_message.move_up = event.type == "keydown" ? 1 : 0;
+		return false;
+	});
+	HI.on(["keydown:PageDown", "keyup:PageDown"], function(event) {
+		camera_message.move_up = event.type == "keydown" ? -1 : 0;
+		return false
+	});
+	
+	HI.on(["keydown:Insert", "keyup:Insert"], function(event) {
+		camera_message.rotate_forward = event.type == "keydown" ? 1 : 0;
+		return false;
+	});
+	HI.on(["keydown:Delete", "keyup:Delete"], function(event) {
+		camera_message.rotate_forward = event.type == "keydown" ? -1 : 0;
+		return false
+	});
+	
+	HI.on("pan", function(event, pan) { 
+		camera_message.rotate_up = -pan.xMoved;
+		camera_message.rotate_right = -pan.yMoved;
+		return false;
+	});
+}
+
+var message = document.getElementById("message");
+try
+{
+	var canvas = document.getElementById("canvas-id");
+	var gl = init_webgl(canvas);
+	
+	let width = canvas.width;
+	let height = canvas.height;
+	let show_help = true;
+	
+	// Mensagens usadas para atualizar a posição da câmera. Somente 3 valores
+	// devem ser usados: -1, 0, 1
+	let camera_message = 
+	{
+		rotate_up: 0,
+		rotate_right: 0,
+		rotate_forward: 0,
+		move_forward: 0,
+		move_up: 0,
+		move_right: 0,
+		
+		
+		perspectiva: 0,
+		ortografica: 0,
+		mais_zoom: 0,
+		menos_zoom: 0
+		
+	};
+	
+	// velocidade de atualização da câmera
+	let camera_speed =
+	{
+		cam_linear: 20/5,
+		cam_angular: 360/10	
+	};
+	
+	// Posição da câmera, conforme os parâmetros da função lookAt
+	let camera = 
+	{
+		eye: vec3.fromValues(0, 0, 12),
+		dir: vec3.fromValues(0, 0, -1),
+		up: vec3.fromValues(0, 1, 0)
+	};
+
+	let HI = new HumanInput(window, {sequenceTimeout:100000});
+	
+	HI.on(["h", "H"], function(event) {
+		let help = document.getElementById("help");
+		if ( show_help ) {  // desliga o help
+			help.style.display = "none";
+			canvas.style.width = "100vw";
+                        canvas.style.height = "100vh";
+			canvas.width = canvas.clientWidth;
+                        canvas.height = canvas.clientHeight;
+			show_help = false;
+		} else {  // mostrar o help
+			help.style.display = "inline-block";
+			canvas.style.width = "";
+                        canvas.style.height = "";
+			canvas.width = width;
+                        canvas.height = height;
+			show_help = true;
+		}
+		gl.viewport(0, 0, canvas.width, canvas.height);
+		mat4.perspective(projection, glMatrix.toRadian(60), canvas.width/canvas.height, .01, 100);
+		gl.uniformMatrix4fv(prog.proj, false, projection);
+		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+	});
+	
+	init_events(HI, camera_message);
+	
+	
+	var prog = new Program(gl, "shader-vs", "shader-fs");
+	prog.get_locations(["pos", "normal"], ["model", "view", "proj", "mat.kad", "mat.ks", "mat.shineness", "mat.emission", "luz1.ia", "luz1.id", "luz1.is", "luz1.pos", "luz2.ia", "luz2.id", "luz2.is", "luz2.pos"]);
+	prog.use();
+
+	
+	primitive.init(gl, 20);
+	primitive.bind(prog);
+	
+	// Essa estrutura é pertinente ao scene graph auto pista
+	// Mantem os valores de transformações para cada um dos objetos listados
+	let state = 
+	{
+		rot_piso: 0,
+		rot_roda: 0,
+		
+	};
+
+	// Essa estrutura diz a velocidade de atualização dos objetos da estrutura
+	// anterior. É para o caso particular do scene graph auto pista
+	let vel = 
+	{
+		rot_piso: -360/30,
+		
+		rot_roda: 360/5.,
+
+	};
+		
+	let stack = new Stack(mat4);
+	
+	let prev = 0;
+	
+	
+	
+	var projection = mat4.create();
+	mat4.perspective(projection, glMatrix.toRadian(60), 1, .1, 100);
+	
+	gl.uniformMatrix4fv(prog.proj, false, projection);
+	let animation = function(time)
+	{
+		time *= 0.001;
+		let deltatime = time - prev;
+		prev = time;
+		
+		let i;
+		let speed = 1;
+		for (i in state) {
+			state[i] += speed * vel[i] * deltatime;
+			state[i] %= 360;
+		}
+		
+		gl.clear(gl.COLOR_BUFFER_BIT);
+
+		let esc = update_camera(camera, camera_message, camera_speed, deltatime);
+		
+		var view = mat4.create();
+		let center = vec3.create();
+		vec3.add(center, camera.eye, camera.dir);
+		mat4.lookAt(view, camera.eye, center, camera.up);
+		gl.uniformMatrix4fv(prog.view, false, view);
+		
+
+		// chamando o scene graph auto pista (implementado no arquivo cena.js)
+		cena(prog, stack, state, primitive, esc); 
+		requestAnimationFrame(animation);
+	};
+	requestAnimationFrame(animation);
+	
+} catch(e) {
+	message.innerHTML = e.message;
+}
+
+</script>
+
+</body>
+</html>
